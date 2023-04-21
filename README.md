@@ -9,8 +9,9 @@ cyberdog集群控制：使用python实现的[gRPC](http://doc.oschina.net/grpc?t
 
 - keyboard：`sudo pip install keyboard` 
 
-
 ### 协议编译
+
+**项目仓库里已经生成好了`cyberdog_app_pb2.py`与`cyberdog_app_pb2_grpc.py`，如需重新生成请继续阅读，否则请直接跳至下一节**
 
 下载官方通信协议：[cyberdog_app.proto](https://partner-gitlab.mioffice.cn/cyberdog/athena_cyberdog/-/tree/devel/athena_common/athena_grpc/protos)
 
