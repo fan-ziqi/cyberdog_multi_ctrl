@@ -1,4 +1,6 @@
 import os
+import threading
+import time
 import grpc
 import cyberdog_app_pb2
 import cyberdog_app_pb2_grpc
@@ -10,6 +12,7 @@ MAX_SPEED = 16 # 最大速度
 gait_str = "trot"
 motion_str = "None"
 stubs = []
+isExit = False
 # cyberdog_ips = ["192.168.1.1", "192.168.1.2"]
 #从文件读取
 try:
@@ -36,22 +39,31 @@ angular = Vector3(0, 0, 0)
 def OpenGrpc():
     # Open grpc channel 
     global cyberdog_ips, stubs
+    thread_list = []
     if not cyberdog_ips:
         cyberdog_ips = input("Cyberdog IPs (separated by \',\'): ")
         cyberdog_ips = cyberdog_ips.split(',')
 
     for cyberdog_ip in cyberdog_ips:
-        with grpc.insecure_channel(str(cyberdog_ip) + ':50051') as channel:
-            print(f"Wait connect for {cyberdog_ip}")
-            try:
-                grpc.channel_ready_future(channel).result(timeout=grpc_timeout)
-            except grpc.FutureTimeoutError:
-                print(f"Connect error for {cyberdog_ip}, Timeout={grpc_timeout}")
-                continue
-            # Get stub from channel
-            stub = cyberdog_app_pb2_grpc.CyberdogAppStub(channel)
-            stubs.append(stub)
+        t = threading.Thread(target=connectGrpc, args=(cyberdog_ip,))
+        t.start()
+        thread_list.append({'ip': cyberdog_ip, 'stub':None, 'thread':t})
+        
+def connectGrpc(cyberdog_ip: str) -> None:
+    global stubs
+    with grpc.insecure_channel(str(cyberdog_ip) + ':50051') as channel:
+        print(f"Wait connect for {cyberdog_ip}")
+        try:
+            grpc.channel_ready_future(channel).result(timeout=grpc_timeout)
+        except grpc.FutureTimeoutError:
+            print(f"Connect error for {cyberdog_ip}, Timeout={grpc_timeout}")
+            return
+        # Get stub from channel
+        stub = cyberdog_app_pb2_grpc.CyberdogAppStub(channel)
         print(f"Connect success for {cyberdog_ip}")
+        stubs.append(stub)
+        while isExit==False:
+            time.sleep(1)
 
 def StandUp(stub):
     global stubs,cyberdog_ips
@@ -455,6 +467,7 @@ if __name__ == '__main__':
         elif char == '2':
             RunGaitCMD()
         elif char == 'q':
+            isExit = True
             break
         else:
             continue
