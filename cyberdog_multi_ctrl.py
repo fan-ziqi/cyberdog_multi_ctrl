@@ -1,5 +1,4 @@
 import os
-import threading
 import time
 import grpc
 import cyberdog_app_pb2
@@ -7,14 +6,16 @@ import cyberdog_app_pb2_grpc
 import keyboard
 import functools
 
-grpc_timeout = 1 # grpc连接超时时间 10
-MAX_SPEED = 16 # 最大速度
-gait_str = "trot"
-motion_str = "None"
+grpc_timeout = 1 # grpc connection timeout 10
+MAX_SPEED = 16 # maximum speed: 16 (In the following code, it is divided by 10)
+speed_lv = 1 # Default speed: 1 (In the following code, it is divided by 10)
+gait_str = "trot" # Default gait: trot
+motion_str = "None" # Default motion: None
 stubs = []
-isExit = False
+channels = []
+
+# read by file "ip.txt"
 # cyberdog_ips = ["192.168.1.1", "192.168.1.2"]
-#从文件读取
 try:
     with open("ip.txt", "r") as f:
         cyberdog_ips = [line.rstrip() for line in f]
@@ -32,38 +33,31 @@ class Vector3:
         self.z = z
         pass
 
-speed_lv = 1
 linear = Vector3(0, 0, 0)
 angular = Vector3(0, 0, 0)
 
 def OpenGrpc():
     # Open grpc channel 
-    global cyberdog_ips, stubs
-    thread_list = []
+    global cyberdog_ips, stubs, channels
+    
     if not cyberdog_ips:
         cyberdog_ips = input("Cyberdog IPs (separated by \',\'): ")
         cyberdog_ips = cyberdog_ips.split(',')
 
     for cyberdog_ip in cyberdog_ips:
-        t = threading.Thread(target=connectGrpc, args=(cyberdog_ip,))
-        t.start()
-        thread_list.append({'ip': cyberdog_ip, 'stub':None, 'thread':t})
-        
-def connectGrpc(cyberdog_ip: str) -> None:
-    global stubs
-    with grpc.insecure_channel(str(cyberdog_ip) + ':50051') as channel:
-        print(f"Wait connect for {cyberdog_ip}")
+        print(cyberdog_ip)
+        channel = grpc.insecure_channel(str(cyberdog_ip) + ':50051')
+        print(f"Waiting connect for {cyberdog_ip}")
         try:
             grpc.channel_ready_future(channel).result(timeout=grpc_timeout)
         except grpc.FutureTimeoutError:
             print(f"Connect error for {cyberdog_ip}, Timeout={grpc_timeout}")
-            return
+            continue
+        channels.append(channel)
         # Get stub from channel
         stub = cyberdog_app_pb2_grpc.CyberdogAppStub(channel)
         print(f"Connect success for {cyberdog_ip}")
         stubs.append(stub)
-        while isExit==False:
-            time.sleep(1)
 
 def StandUp(stub):
     global stubs,cyberdog_ips
@@ -110,9 +104,7 @@ def SitDown(stub):
     succeed_state = False
     for resp in response:
         succeed_state = resp.succeed
-        print(f"Execute Get down for {cyberdog_ips[stubs.index(stub)]} , result:" + str(succeed_state))
-
-
+        print(f"Execute Sit down for {cyberdog_ips[stubs.index(stub)]} , result:" + str(succeed_state))
 
 def ChangeGait(GAIT_str, Event):
     global stubs,cyberdog_ips,gait_str
@@ -158,7 +150,6 @@ def ChangeGait(GAIT_str, Event):
             succeed_state = resp.succeed
             print(f"Change gait to {GAIT_str} for {cyberdog_ips[stubs.index(stub)]} , result:" + str(succeed_state))
     
-
 def ChangeMotion(MOTION_str, Event):
     global stubs,cyberdog_ips,motion_str
     motion_str = MOTION_str
@@ -189,7 +180,7 @@ def ChangeMotion(MOTION_str, Event):
     else:
         return
     for stub in stubs:
-        # Execute HI_FIVE order
+        # Execute motion order
         response = stub.setExtmonOrder(
             cyberdog_app_pb2.ExtMonOrder_Request(
                 order=cyberdog_app_pb2.MonOrder(
@@ -244,9 +235,6 @@ def ChangeOther(OTHER_str, Event):
                     timeout=10))
     else:
         return
-    
-
-
 
 def PrintGait():
     global gait_str
@@ -297,7 +285,6 @@ def PrintMotion():
 
 def SendData():
     global cyberdog_ips, stubs
-    
     for stub in stubs:
         print(f"SendData for {cyberdog_ips[stubs.index(stub)]}")
         response = stub.sendAppDecision(
@@ -322,13 +309,12 @@ def SendData():
     os.system('cls || clear')
     PrintGait()
 
-
 def GoForward(Event):
     linear.x = 0.1 * speed_lv
     linear.y = 0
     angular.z = 0
+    print("hello")
     SendData()
-
 
 def GoBack(Event):
     linear.x = -0.1 * speed_lv
@@ -336,13 +322,11 @@ def GoBack(Event):
     angular.z = 0
     SendData()
 
-
 def GoLeft(Event):
     linear.x = 0
     linear.y = 0.1 * speed_lv
     angular.z = 0
     SendData()
-
 
 def GoRight(Event):
     linear.x = 0
@@ -350,13 +334,11 @@ def GoRight(Event):
     angular.z = 0
     SendData()
 
-
 def TurnLeft(Event):
     linear.x = 0
     linear.y = 0
     angular.z = 0.1 * speed_lv
     SendData()
-
 
 def TurnRight(Event):
     linear.x = 0
@@ -364,19 +346,16 @@ def TurnRight(Event):
     angular.z = -0.1 * speed_lv
     SendData()
 
-
 def Stop(Event):
     linear.x = 0
     linear.y = 0
     angular.z = 0
     SendData()
 
-
 def SpeedUp(Event):
     global speed_lv
     speed_lv += 1
     speed_lv = min(speed_lv, MAX_SPEED)
-
 
 def SpeedDown(Event):
     global speed_lv
@@ -458,6 +437,8 @@ def RunMotionCMD():
 
 if __name__ == '__main__':
     OpenGrpc()
+    print("Initialization completed, sleeping 1s......")
+    time.sleep(1)
     while True:
         os.system('cls || clear')
         print("Choose mode [1: Motion, 2: Gait, q: Exit]:")
@@ -467,7 +448,9 @@ if __name__ == '__main__':
         elif char == '2':
             RunGaitCMD()
         elif char == 'q':
-            isExit = True
+            print("Program is exiting.......")
+            for channel in channels:
+                channel.Close()
             break
         else:
             continue
