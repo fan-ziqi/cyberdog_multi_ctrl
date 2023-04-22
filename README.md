@@ -1,6 +1,12 @@
 # cyberdog_multi_ctrl
 cyberdog集群控制：使用python实现的[gRPC](http://doc.oschina.net/grpc?t=58008)client向cyberdog集群发送控制指令，通信协议为官方开源[cyberdog_app.proto](https://partner-gitlab.mioffice.cn/cyberdog/athena_cyberdog/-/tree/devel/athena_common/athena_grpc/protos) ，项目部分代码参考[CyberDog_Ctrl](https://github.com/Karlsx/CyberDog_Ctrl)项目。
 
+## 更新日志
+
+- [x] 单个机器人控制
+- [ ] grpc队列阻塞，控制有延迟
+- [ ] 有的时候手机端需要点击"开始遥控"才能使用电脑控制，原因未知
+
 ## 依赖安装
 
 - grpc：`sudo pip install grpcio` 
