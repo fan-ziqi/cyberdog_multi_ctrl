@@ -177,6 +177,8 @@ def ChangeMotion(MOTION_str, Event):
         MOTION = cyberdog_app_pb2.MonOrder.MONO_ORDER_SIT
     elif MOTION_str == "bow":
         MOTION = cyberdog_app_pb2.MonOrder.MONO_ORDER_BOW
+    elif MOTION_str == "max":
+        MOTION = cyberdog_app_pb2.MonOrder.MONO_ORDER_MAX
     else:
         return
     for stub in stubs:
@@ -280,6 +282,7 @@ def PrintMotion():
     print("9: change motion to turn_over")
     print("0: change motion to sit")
     print("-: change motion to bow")
+    print("+: change motion to max")
     print("--------------------------")
     print("ESC: Exit Control")
 
@@ -424,6 +427,7 @@ def RunMotionCMD():
     keyboard.on_press_key('9', functools.partial(ChangeMotion, "turn_over"))
     keyboard.on_press_key('0', functools.partial(ChangeMotion, "sit"))
     keyboard.on_press_key('-', functools.partial(ChangeMotion, "bow"))
+    keyboard.on_press_key('+', functools.partial(ChangeMotion, "max"))
     keyboard.on_press_key('t', functools.partial(ChangeOther, "stand_up"))
     keyboard.on_press_key('g', functools.partial(ChangeOther, "sit_down"))
     keyboard.wait('esc')
